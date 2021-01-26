@@ -22,6 +22,8 @@ import re
 import logging
 import os.path
 from collections import defaultdict
+from jedi import Script
+from jedi.api.classes import Completion
 from PyQt5.Qsci import (
     QsciScintilla,
     QsciLexerPython,
@@ -78,6 +80,20 @@ class CssLexer(QsciLexerCSS):
         if style == QsciLexerCSS.Comment:
             return "Comment"
         return super().description(style)
+
+
+class MuQsciAPIs(QsciAPIs):
+
+    def updateAutoCompletionList(self, context, options):
+        options = []
+        ed: EditorPane = self.lexer().editor()
+        script = Script(code=ed.text(), path=None)
+        line, col = ed.getCursorPosition()
+        line += 1
+        completions = script.complete(line, col)
+        for comp in completions:
+            options.append(comp.name_with_symbols)
+        return options
 
 
 class EditorPane(QsciScintilla):
@@ -264,7 +280,7 @@ class EditorPane(QsciScintilla):
         """
         Sets the API entries for tooltips, calltips and the like.
         """
-        self.api = QsciAPIs(self.lexer)
+        self.api = MuQsciAPIs(self.lexer)
         for entry in api_definitions:
             self.api.add(entry)
         self.api.prepare()
